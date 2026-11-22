@@ -3,6 +3,7 @@ package com.clipsync.android.ui
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -52,8 +53,7 @@ class SendClipboardActivity : Activity() {
     }
 
     private fun finishQuietly() {
-        finish()
-        overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
+        finishWithoutAnimation()
     }
 
     companion object {
@@ -87,7 +87,17 @@ class ShareToMacActivity : Activity() {
             syncController.sendFromUser(text, sensitive, skipIfEcho = false)
         }
         setResult(RESULT_CANCELED) // never replace the selected text
-        finish()
-        overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
+        finishWithoutAnimation()
+    }
+}
+
+/** Finishes without a close animation (the activity is invisible anyway). */
+internal fun Activity.finishWithoutAnimation() {
+    finish()
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0)
+    } else {
+        @Suppress("DEPRECATION")
+        overridePendingTransition(0, 0)
     }
 }

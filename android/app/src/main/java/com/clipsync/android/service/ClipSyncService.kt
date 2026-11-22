@@ -1,6 +1,8 @@
 package com.clipsync.android.service
 
 import android.app.Notification
+import androidx.core.content.ContextCompat
+import android.os.Build
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -64,13 +66,14 @@ class ClipSyncService : Service() {
             }
         }
         networkMonitor = NetworkMonitor(this) { controller.connection.kick() }.also { it.start() }
-        registerReceiver(
+        ContextCompat.registerReceiver(
+            this,
             wakeReceiver,
             IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_ON)
                 addAction(Intent.ACTION_USER_PRESENT)
             },
-            RECEIVER_NOT_EXPORTED,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         receiverRegistered = true
     }
@@ -137,7 +140,7 @@ object Notifications {
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        return Notification.Builder(context, CHANNEL_STATUS)
+        val builder = Notification.Builder(context, CHANNEL_STATUS)
             .setSmallIcon(R.drawable.ic_tile)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(describe(context, state))
@@ -145,10 +148,12 @@ object Notifications {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_SERVICE)
-            .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
             .addAction(sendAction(context, sensitive = false))
             .addAction(sendAction(context, sensitive = true))
-            .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+        return builder.build()
     }
 
     /** Points straight at the activity: notification trampolines through services are blocked. */

@@ -1,5 +1,6 @@
 package com.clipsync.android.ui
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
@@ -59,7 +60,9 @@ class PairActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         enableEdgeToEdge()
+        val scanNow = savedInstanceState == null && intent.getBooleanExtra(EXTRA_SCAN_NOW, false)
         handleIntent(intent)
+        if (scanNow && state == PairState.Entry) scan()
         setContent {
             ClipSyncTheme {
                 PairScreen(
@@ -99,6 +102,14 @@ class PairActivity : ComponentActivity() {
             .addOnFailureListener { e ->
                 state = PairState.Error("Scanner unavailable (${e.message ?: "unknown error"}). Try again in a moment, or paste the link.")
             }
+    }
+
+    companion object {
+        private const val EXTRA_SCAN_NOW = "scan_now"
+
+        /** Opens the scanner straight away (from the setup screens). */
+        fun scanIntent(context: Context): Intent =
+            Intent(context, PairActivity::class.java).putExtra(EXTRA_SCAN_NOW, true)
     }
 
     private fun confirm(pairing: Pairing) {
@@ -148,8 +159,11 @@ private fun PairScreen(
 @Composable
 private fun EntryContent(onScan: () -> Unit, onPaste: (String) -> Unit) {
     var link by remember { mutableStateOf("") }
-    Text("On your Mac, open Alfred, type “clip” and choose “Pair phone”. A QR code appears.")
-    Button(onClick = onScan, modifier = Modifier.fillMaxWidth()) { Text("Scan QR code") }
+    Text(
+        "On your Mac, open the ClipSync app: its window shows a code. (Or click the ClipSync icon at the " +
+            "top of your Mac's screen and choose “Set Up a Phone”.)",
+    )
+    Button(onClick = onScan, modifier = Modifier.fillMaxWidth()) { Text("Scan code") }
     Text("Or paste the pairing link:", style = MaterialTheme.typography.bodyMedium)
     OutlinedTextField(
         value = link,

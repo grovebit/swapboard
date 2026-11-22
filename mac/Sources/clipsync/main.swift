@@ -2,13 +2,13 @@ import ClipSyncCore
 import Foundation
 
 let usage = """
-clipsync: ClipSync agent and CLI for the Alfred workflow
+clipsync: ClipSync's command-line tool. It's also the program inside ClipSync.app.
 
-  clipsync start | stop          install+start / stop+remove the background agent (LaunchAgent)
+  clipsync start | stop          start the background agent (also at login) / stop it
   clipsync status [--alfred]     show status (or Alfred Script Filter JSON)
   clipsync send [--text TEXT]    send TEXT (default: current clipboard) to the phone
   clipsync pause | resume        pause / resume automatic sync of Mac copies
-  clipsync pair [--no-show]      create a pairing and show its QR code
+  clipsync pair [--no-show]      show a pairing QR code (in ClipSync.app's window when it runs)
   clipsync pair-link             print the current pairing link (to paste instead of scanning)
   clipsync unpair [PID|--all]    forget a phone
   clipsync last                  copy the last clip received from the phone
@@ -18,7 +18,11 @@ clipsync: ClipSync agent and CLI for the Alfred workflow
 """
 
 signal(SIGPIPE, SIG_IGN)
-var arguments = Array(CommandLine.arguments.dropFirst())
+// Older macOS versions may pass a process serial number when Finder opens the app.
+var arguments = Array(CommandLine.arguments.dropFirst()).filter { !$0.hasPrefix("-psn_") }
+if arguments.isEmpty, AppBundle.current != nil {
+    Launcher.run() // ClipSync.app was opened from Finder
+}
 let command = arguments.isEmpty ? "help" : arguments.removeFirst()
 
 func option(_ name: String) -> String? {
@@ -40,13 +44,22 @@ do {
     case "status": output = arguments.contains("--alfred") ? Commands.alfredStatus() : Commands.statusText()
     case "send": output = try Commands.send(text: option("--text"))
     case "pause", "resume": output = try Commands.agentRequest(ControlRequest(cmd: command))
-    case "pair": output = try { try Commands.ensureAgentRunning(); return try PairCommand.run(show: !arguments.contains("--no-show")) }()
+    case "pair":
+        let show = !arguments.contains("--no-show")
+        output = try {
+            try Commands.ensureAgentRunning()
+            if show, Commands.showPairingWindow() { return "" }
+            return try PairCommand.run(show: show)
+        }()
     case "pair-link": output = try PairCommand.link()
     case "unpair": output = try Commands.unpair(arguments.first)
     case "last": output = try Commands.copyLast()
     case "run":
         guard let action = arguments.first else { throw CLIError("usage: clipsync run ACTION") }
         output = try Commands.runAction(action)
+    #if DEBUG
+    case "debug-snapshots": output = try Commands.agentRequest(ControlRequest(cmd: "debug-snapshots", text: arguments.first))
+    #endif
     case "help", "-h", "--help": output = usage
     default: throw CLIError("unknown command \(command)\n\n\(usage)")
     }

@@ -35,6 +35,8 @@ public struct Settings: Codable, Equatable {
     public var notifyOnReceive = true
     public var maxClipKB = 1024
     public var ignoredApps: [String] = Settings.defaultIgnoredApps
+    /// Start the agent when the user logs in (the menu-bar app's "Open at Login").
+    public var openAtLogin = true
 
     public init() {}
 
@@ -45,6 +47,7 @@ public struct Settings: Codable, Equatable {
         notifyOnReceive = try c.decodeIfPresent(Bool.self, forKey: .notifyOnReceive) ?? true
         maxClipKB = try c.decodeIfPresent(Int.self, forKey: .maxClipKB) ?? 1024
         ignoredApps = try c.decodeIfPresent([String].self, forKey: .ignoredApps) ?? Settings.defaultIgnoredApps
+        openAtLogin = try c.decodeIfPresent(Bool.self, forKey: .openAtLogin) ?? true
     }
 
     /// Effective byte limit for outgoing text (never above the protocol maximum).

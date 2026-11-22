@@ -4,21 +4,51 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// One version for the whole project, from the VERSION file at the repo root (e.g. 1.4.0 → code 10400).
+val appVersion = rootProject.file("../VERSION").readText().trim()
+val appVersionCode = appVersion.split(".").map { it.toInt() }.let { (major, minor, patch) ->
+    major * 10_000 + minor * 100 + patch
+}
+
+// The project's GitHub page for the in-app Help link (`make` and CI pass it; empty otherwise).
+val projectUrl = (findProperty("projectUrl") as String?).orEmpty()
+    .takeIf { Regex("^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$").matches(it) }
+    .orEmpty()
+
+// Release signing key, from the environment (CI secrets) or ~/.gradle/gradle.properties. Without
+// it, release builds are unsigned; debug builds always use the debug key.
+fun signingValue(env: String, property: String): String? =
+    System.getenv(env)?.takeIf { it.isNotEmpty() } ?: (findProperty(property) as String?)
+val releaseKeystore = signingValue("CLIPSYNC_KEYSTORE", "clipsyncKeystore")
+
 android {
     namespace = "com.clipsync.android"
     compileSdk = 37
 
     defaultConfig {
         applicationId = "com.clipsync.android"
-        minSdk = 34
+        minSdk = 29
         targetSdk = 37
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = appVersionCode
+        versionName = appVersion
+        buildConfigField("String", "PROJECT_URL", "\"$projectUrl\"")
+    }
+
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = signingValue("CLIPSYNC_KEYSTORE_PASSWORD", "clipsyncKeystorePassword")
+                keyAlias = signingValue("CLIPSYNC_KEY_ALIAS", "clipsyncKeyAlias") ?: "clipsync"
+                keyPassword = signingValue("CLIPSYNC_KEY_PASSWORD", "clipsyncKeyPassword") ?: storePassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (releaseKeystore != null) signingConfig = signingConfigs.getByName("release")
         }
     }
 

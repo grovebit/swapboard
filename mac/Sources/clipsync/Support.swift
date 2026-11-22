@@ -140,3 +140,75 @@ func relativeTime(_ date: Date, now: Date = Date()) -> String {
     default: return "\(seconds / 86400)d ago"
     }
 }
+
+enum TailscaleInfo {
+    /// The Mac App Store app and the standalone download.
+    static let bundleIDs = ["io.tailscale.ipn.macos", "io.tailscale.ipn.macsys"]
+    static let downloadURL = URL(string: "https://tailscale.com/download/mac")!
+
+    static var appURL: URL? {
+        bundleIDs.lazy.compactMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }.first
+    }
+
+    static var isConnected: Bool { !MacInfo.tailscaleIPv4s().isEmpty }
+}
+
+/// Identifies the binary a process runs, so the launcher can tell when the running agent is an
+/// older build than the app the user just opened.
+enum ExecutableStamp {
+    static func of(_ url: URL?) -> String? {
+        guard let path = url?.resolvingSymlinksInPath().path,
+              let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+              let size = attributes[.size] as? NSNumber,
+              let modified = attributes[.modificationDate] as? Date
+        else { return nil }
+        return "\(size.intValue)-\(Int(modified.timeIntervalSince1970))"
+    }
+
+    /// Taken once at startup: the file on disk may be replaced by an update while we run.
+    static let current: String? = of(Bundle.main.executableURL)
+}
+
+/// One-line status, worded the same in Alfred and in the menu bar.
+enum StatusText {
+    static func headline(_ status: AgentStatus?, config: Config) -> (title: String, detail: String) {
+        guard let s = status else { return ("🔴 ClipSync agent is stopped", "Choose “Start agent” to sync") }
+        let lastSync = [s.lastSent?.at, s.lastReceived?.at].compactMap { $0 }.max()
+        let syncText = s.paused ? "auto-sync paused" : "auto-sync on"
+        let lastText = lastSync.map { " · last sync \(relativeTime($0))" } ?? ""
+        if !s.listening, s.listenError == SyncServer.noTailscale {
+            return ("🔴 Tailscale is off on this Mac",
+                    "ClipSync only syncs over Tailscale. It resumes as soon as Tailscale connects")
+        }
+        if !s.listening {
+            return ("🔴 Can't listen on port \(s.port)", s.listenError ?? "Another app may be using the port")
+        }
+        if let peer = s.peers.first {
+            return ("🟢 Connected to \(peer.device)", "via \(peer.route) (\(peer.host)) · \(syncText)\(lastText)")
+        }
+        if let name = config.pairings.first(where: \.confirmed)?.displayName {
+            return ("🟡 Waiting for \(name)…", "Open ClipSync on the phone · port \(s.port) · \(syncText)\(lastText)")
+        }
+        return ("🟡 No phone paired yet", "Choose “Pair a phone” and scan the QR code with the ClipSync app")
+    }
+
+    /// What the status means and what to do, in plain words, for the app's status page.
+    static func explanation(_ s: AgentStatus, config: Config) -> String {
+        if !s.listening, s.listenError == SyncServer.noTailscale {
+            return "ClipSync only syncs through Tailscale. Open Tailscale on this Mac and sign in; ClipSync carries on by itself."
+        }
+        if !s.listening {
+            return "ClipSync can't open its connection on port \(s.port). Another app may be using that port."
+        }
+        if s.paused {
+            return "Sending your Mac copies is paused. To turn it back on, choose Resume Auto-Sync in the ClipSync menu at the top of your screen."
+        }
+        if !s.peers.isEmpty {
+            return "Everything works: copy on one device, paste on the other."
+        }
+        if config.pairings.contains(where: \.confirmed) {
+            return "Your phone isn't connected right now. Open ClipSync on your phone, and check that Tailscale is on there too."
+        }
+        return "No phone is set up yet."
+    }
+}

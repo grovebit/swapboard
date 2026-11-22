@@ -45,6 +45,8 @@ struct AgentStatus: Codable {
     var lastSent: Event?
     var lastReceived: Event?
     var pairingPending: Bool
+    /// Which build the agent runs (see `ExecutableStamp`). Missing from agents before 1.4.
+    var executableStamp: String? = nil
 }
 
 enum ControlCoding {

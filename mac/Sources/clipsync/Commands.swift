@@ -52,7 +52,7 @@ enum Commands {
         do {
             response = try ControlClient.request(request)
         } catch is ControlClient.NotRunning {
-            throw CLIError("The ClipSync agent isn't running. Start it from Alfred (clip → Start agent)")
+            throw CLIError("ClipSync isn't running. Open the ClipSync app, or choose clip → Start agent in Alfred")
         }
         guard response.ok else { throw CLIError(response.message ?? "failed") }
         return response.message ?? ""
@@ -90,6 +90,12 @@ enum Commands {
         if !ControlClient.isAgentRunning() { _ = try LaunchAgentManager.start() }
     }
 
+    /// Opens the menu-bar app's setup window at the pairing step. False when the agent has no
+    /// window (Alfred-only installs), so callers fall back to the Quick Look QR code.
+    static func showPairingWindow() -> Bool {
+        (try? ControlClient.request(ControlRequest(cmd: "show-pairing"), timeout: 3))?.ok == true
+    }
+
     /// Entry point for Alfred rows: `clipsync run <action>`. Prints the notification text.
     static func runAction(_ action: String) throws -> String {
         switch action {
@@ -98,6 +104,7 @@ enum Commands {
         case "copy-last", "paste-last": return try copyLast()
         case "pair":
             try ensureAgentRunning()
+            if showPairingWindow() { return "" }
             return try PairCommand.run()
         case "show-qr":
             PairCommand.showQR()
@@ -136,34 +143,8 @@ enum Commands {
         var items: [AlfredItem] = []
 
         // Status row
-        if let s = status {
-            let lastSync = [s.lastSent?.at, s.lastReceived?.at].compactMap { $0 }.max()
-            let syncText = s.paused ? "auto-sync paused" : "auto-sync on"
-            let lastText = lastSync.map { " · last sync \(relativeTime($0))" } ?? ""
-            if !s.listening, s.listenError == SyncServer.noTailscale {
-                items.append(AlfredItem(title: "🔴 Tailscale is off on this Mac",
-                                        subtitle: "ClipSync only syncs over Tailscale. It resumes as soon as Tailscale connects",
-                                        valid: false))
-            } else if !s.listening {
-                items.append(AlfredItem(title: "🔴 Can't listen on port \(s.port)",
-                                        subtitle: s.listenError ?? "Another app may be using the port", valid: false))
-            } else if let peer = s.peers.first {
-                items.append(AlfredItem(title: "🟢 Connected to \(peer.device)",
-                                        subtitle: "via \(peer.route) (\(peer.host)) · \(syncText)\(lastText)", valid: false))
-            } else if config.pairings.contains(where: \.confirmed) {
-                let name = config.pairings.first(where: \.confirmed)?.displayName ?? "phone"
-                items.append(AlfredItem(title: "🟡 Waiting for \(name)…",
-                                        subtitle: "Open ClipSync on the phone · port \(s.port) · \(syncText)\(lastText)",
-                                        valid: false))
-            } else {
-                items.append(AlfredItem(title: "🟡 No phone paired yet",
-                                        subtitle: "Choose “Pair a phone” and scan the QR code with the ClipSync app",
-                                        valid: false))
-            }
-        } else {
-            items.append(AlfredItem(title: "🔴 ClipSync agent is stopped", subtitle: "Choose “Start agent” to sync",
-                                    valid: false))
-        }
+        let headline = StatusText.headline(status, config: config)
+        items.append(AlfredItem(title: headline.title, subtitle: headline.detail, valid: false))
 
         // Send
         if let current = Pasteboard.readText() {

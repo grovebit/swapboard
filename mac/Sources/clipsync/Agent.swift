@@ -56,10 +56,13 @@ final class Agent {
     private var lastSynced: (text: String, at: Date)?
     private var maintenance: Timer?
     private var signalSources: [DispatchSourceSignal] = []
+    /// Menu-bar icon and windows; only when the agent runs inside ClipSync.app.
+    private var ui: AgentUI?
 
     static func run() -> Never {
         let app = NSApplication.shared
-        app.setActivationPolicy(.prohibited)
+        let isApp = AppBundle.current != nil
+        app.setActivationPolicy(isApp ? .accessory : .prohibited)
         let agent = Agent()
         do {
             try agent.start()
@@ -67,11 +70,21 @@ final class Agent {
             Log.error("agent failed to start: \(error)")
             exit(1)
         }
+        if isApp { agent.ui = AgentUI(agent: agent) }
         withExtendedLifetime(agent) { app.run() }
         exit(0)
     }
 
+    /// Exit code 0 tells launchd not to restart the agent (KeepAlive: SuccessfulExit = false).
+    func shutdown() -> Never {
+        Log.info("agent stopping")
+        control.stop()
+        server.stop()
+        exit(0)
+    }
+
     private func start() throws {
+        _ = ExecutableStamp.current // before an update can replace the file on disk
         signal(SIGPIPE, SIG_IGN)
         try Paths.ensureDataDir()
         trimLog()
@@ -97,12 +110,7 @@ final class Agent {
         for sig in [SIGTERM, SIGINT] {
             signal(sig, SIG_IGN)
             let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
-            source.setEventHandler { [weak self] in
-                Log.info("agent stopping")
-                self?.control.stop()
-                self?.server.stop()
-                exit(0)
-            }
+            source.setEventHandler { [weak self] in self?.shutdown() }
             source.resume()
             signalSources.append(source)
         }
@@ -138,7 +146,7 @@ final class Agent {
         Log.info("\(peer.device) connected via \(Route.name(for: peer.host)) (\(peer.host) on \(peer.interfaceNames))")
         if newlyPaired {
             try? FileManager.default.removeItem(at: Paths.qrURL)
-            AlfredNotifier.notify("📱 Paired with \(peer.device)")
+            Notifier.notify("📱", title: "Paired with \(peer.device)", body: "Your clipboard now syncs with this phone")
         }
         if let clip = outbox.freshPending() { peer.send(.clip(clip)) }
     }
@@ -170,7 +178,7 @@ final class Agent {
         if let pending = outbox.pending { outbox.acknowledge(pending.clip.id) }
         Log.info("received \(clip.text.utf8.count) bytes from \(peer.device)\(clip.sensitive ? " (sensitive)" : "")")
         if config.settings.notifyOnReceive {
-            AlfredNotifier.notify("📋 From \(peer.device): \(preview(clip.text, sensitive: clip.sensitive, limit: 80))")
+            Notifier.notify("📋", title: "From \(peer.device)", body: preview(clip.text, sensitive: clip.sensitive, limit: 80))
         }
     }
 
@@ -236,6 +244,19 @@ final class Agent {
         case "reload":
             reload()
             return ControlResponse(ok: true)
+        #if DEBUG
+        case "debug-snapshots":
+            do {
+                let dir = URL(fileURLWithPath: request.text ?? "snapshots", isDirectory: true)
+                return ControlResponse(ok: true, message: try SetupWindowController.renderSnapshots(agent: self, to: dir))
+            } catch {
+                return .error("\(error)")
+            }
+        #endif
+        case "show", "show-pairing":
+            guard let ui else { return .error("This ClipSync agent has no window") }
+            ui.showSetup(pairing: request.cmd == "show-pairing")
+            return ControlResponse(ok: true)
         default:
             return .error("unknown command \(request.cmd)")
         }
@@ -266,8 +287,51 @@ final class Agent {
             },
             lastSent: lastSent,
             lastReceived: lastReceived,
-            pairingPending: config.pairings.contains { !$0.confirmed }
+            pairingPending: config.pairings.contains { !$0.confirmed },
+            executableStamp: ExecutableStamp.current
         )
+    }
+
+    // MARK: - Menu-bar app
+
+    var currentStatus: AgentStatus { status() }
+    var currentConfig: Config { config }
+
+    /// Sends the Mac clipboard now, like `clipsync send`. Returns a message for the user.
+    func sendClipboard() -> String {
+        guard let current = Pasteboard.readText(), !current.text.isEmpty else { return "The clipboard has no text" }
+        let response = handleControl(ControlRequest(cmd: "send", text: current.text, sensitive: current.concealed))
+        return response.message ?? (response.ok ? "Sent" : "Couldn't send")
+    }
+
+    func copyLastReceived() {
+        guard let text = lastReceivedText else { return }
+        watcher.write(text, sensitive: lastReceived?.sensitive ?? false)
+    }
+
+    func setPaused(_ paused: Bool) {
+        _ = handleControl(ControlRequest(cmd: paused ? "pause" : "resume"))
+    }
+
+    func setNotifyOnReceive(_ enabled: Bool) {
+        config = (try? store.update { $0.settings.notifyOnReceive = enabled }) ?? config
+    }
+
+    func setOpenAtLogin(_ enabled: Bool) throws {
+        try LaunchAgentManager.setOpenAtLogin(enabled)
+        config = store.load()
+    }
+
+    /// Creates a pairing for the setup window to show as a QR code.
+    func startPairing() throws -> PairingInfo {
+        let info = try PairCommand.createPairing()
+        reload()
+        return info
+    }
+
+    func unpair(pid: String) {
+        config = (try? store.update { $0.pairings.removeAll { $0.pid == pid } }) ?? config
+        reload()
     }
 
     // MARK: - Housekeeping
@@ -295,18 +359,5 @@ final class Agent {
         if let size = attributes?[.size] as? NSNumber, size.intValue > 2 * 1024 * 1024 {
             ftruncate(STDERR_FILENO, 0)
         }
-    }
-}
-
-enum AlfredNotifier {
-    /// Shows a banner through the workflow's External Trigger "notify". Text is passed as argv, never
-    /// interpolated into AppleScript source.
-    static func notify(_ text: String) {
-        let script = """
-        on run argv
-            tell application id "com.runningwithcrayons.Alfred" to run trigger "notify" in workflow (item 1 of argv) with argument (item 2 of argv)
-        end run
-        """
-        Shell.spawn("/usr/bin/osascript", ["-e", script, Paths.bundleID, text])
     }
 }

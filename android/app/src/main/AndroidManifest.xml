@@ -13,8 +13,9 @@
     <!-- No ACCESS_LOCAL_NETWORK on purpose: ClipSync only talks to the Mac over Tailscale, so on
          Android 17 the OS itself blocks this app from reaching devices on the local network. -->
 
-    <!-- Optional automatic phone → Mac sync uses Shizuku if it is installed. -->
+    <!-- Setup checks whether Tailscale is installed; optional automatic phone → Mac sync uses Shizuku. -->
     <queries>
+        <package android:name="com.tailscale.ipn" />
         <package android:name="moe.shizuku.privileged.api" />
     </queries>
 
