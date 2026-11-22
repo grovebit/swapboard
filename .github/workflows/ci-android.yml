@@ -22,7 +22,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Install Android SDK platform 37
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;37.0.0" > /dev/null
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
       - name: Test, lint and build
         working-directory: android
         run: ./gradlew --no-daemon test lintDebug assembleDebug
