@@ -1,0 +1,139 @@
+# Builds the three downloads and attaches them to a GitHub release.
+#   - Pushing a tag such as v1.4.0 (it must match the VERSION file) publishes a release.
+#   - Running this workflow by hand makes a draft pre-release, to try a build without publishing.
+#
+# Secrets:
+#   CLIPSYNC_KEYSTORE_BASE64, CLIPSYNC_KEYSTORE_PASSWORD, CLIPSYNC_KEY_ALIAS   Android signing key (required)
+#   MACOS_CERTIFICATE_P12, MACOS_CERTIFICATE_PASSWORD, MACOS_SIGN_ID,
+#   APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD   Optional: Developer ID signing and notarization.
+#                                                  Without them the Mac app is signed ad hoc.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: release-${{ github.ref }}
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Pick the release tag
+        id: tag
+        run: |
+          version=$(cat VERSION)
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            tag="$GITHUB_REF_NAME"
+            if [ "$tag" != "v$version" ]; then
+              echo "::error::The tag $tag doesn't match the VERSION file ($version)"
+              exit 1
+            fi
+          else
+            tag="v$version-test.$GITHUB_RUN_NUMBER"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Create a draft release
+        run: |
+          sed "s|{{REPO_URL}}|https://github.com/$GITHUB_REPOSITORY|g" .github/release-notes.md > "$RUNNER_TEMP/notes.md"
+          extra=""
+          if [ "$GITHUB_EVENT_NAME" != "push" ]; then extra="--prerelease"; fi
+          gh release create "${{ steps.tag.outputs.tag }}" --draft $extra --target "$GITHUB_SHA" \
+            --title "ClipSync ${{ steps.tag.outputs.tag }}" --notes-file "$RUNNER_TEMP/notes.md"
+
+  mac:
+    needs: prepare
+    runs-on: macos-latest
+    env:
+      HAS_DEVELOPER_ID: ${{ secrets.MACOS_CERTIFICATE_P12 != '' }}
+    steps:
+      - uses: actions/checkout@v5
+      - run: make test-mac
+      - name: Import the Developer ID certificate
+        if: env.HAS_DEVELOPER_ID == 'true'
+        env:
+          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password=$(openssl rand -hex 16)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          echo "$CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain"
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+      - name: Build the app and the Alfred workflow
+        env:
+          MACOS_SIGN_ID: ${{ secrets.MACOS_SIGN_ID }}
+        run: |
+          if [ "$HAS_DEVELOPER_ID" = "true" ]; then
+            make app package SIGN_ID="$MACOS_SIGN_ID" CODESIGN_FLAGS="--options runtime --timestamp"
+          else
+            make app package
+          fi
+      - name: Notarize
+        if: env.HAS_DEVELOPER_ID == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          notarize() { xcrun notarytool submit "$1" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait; }
+          notarize dist/ClipSync-mac.zip
+          xcrun stapler staple dist/ClipSync.app
+          rm dist/ClipSync-mac.zip
+          ditto -c -k --keepParent dist/ClipSync.app dist/ClipSync-mac.zip
+          cp dist/ClipSync.alfredworkflow "$RUNNER_TEMP/workflow.zip"
+          notarize "$RUNNER_TEMP/workflow.zip"
+      - name: Attach to the release
+        run: gh release upload "${{ needs.prepare.outputs.tag }}" dist/ClipSync-mac.zip dist/ClipSync.alfredworkflow --clobber
+
+  android:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Android SDK platform 37
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;37.0.0" > /dev/null
+      - name: Test and build the signed APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CLIPSYNC_KEYSTORE_BASE64 }}
+          CLIPSYNC_KEYSTORE_PASSWORD: ${{ secrets.CLIPSYNC_KEYSTORE_PASSWORD }}
+          CLIPSYNC_KEY_ALIAS: ${{ secrets.CLIPSYNC_KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::The CLIPSYNC_KEYSTORE_BASE64 secret is missing (see docs/DEVELOPMENT.md)"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          export CLIPSYNC_KEYSTORE="$RUNNER_TEMP/release.jks"
+          cd android
+          ./gradlew --no-daemon test lintDebug assembleRelease -PprojectUrl="https://github.com/$GITHUB_REPOSITORY"
+          mkdir -p ../dist
+          cp app/build/outputs/apk/release/app-release.apk ../dist/ClipSync.apk
+      - name: Attach to the release
+        run: gh release upload "${{ needs.prepare.outputs.tag }}" dist/ClipSync.apk --clobber
+
+  publish:
+    needs: [prepare, mac, android]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the release
+        run: gh release edit "${{ needs.prepare.outputs.tag }}" --draft=false --repo "$GITHUB_REPOSITORY"

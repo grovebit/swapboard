@@ -1,0 +1,22 @@
+# Mac app, command-line tool and Alfred workflow: tests and a full build.
+name: Mac
+
+on:
+  push:
+    branches: [main]
+    paths: ['mac/**', 'workflow/**', 'protocol/**', 'Makefile', 'VERSION', '.github/workflows/ci-mac.yml']
+  pull_request:
+    paths: ['mac/**', 'workflow/**', 'protocol/**', 'Makefile', 'VERSION', '.github/workflows/ci-mac.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: swift --version
+      - run: make test-mac
+      - run: make app package
