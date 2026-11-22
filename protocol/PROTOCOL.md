@@ -1,21 +1,21 @@
-# ClipSync wire protocol, version 1
+# Swapboard wire protocol, version 1
 
 Two parties:
-- **Server:** the Mac agent (`clipsync agent`).
+- **Server:** the Mac agent (`swapboard agent`).
 - **Client:** the Android app.
 
 Both implementations must pass `vectors.json` (see "Test vectors" below).
 
 ## 1. Pairing
 
-The Mac runs `clipsync pair`. It generates:
+The Mac runs `swapboard pair`. It generates:
 - `psk`: 32 random bytes
 - `pid`: 12 random bytes, encoded as base64url without padding (16 characters)
 
 It then shows this URI as a QR code:
 
 ```
-clipsync://pair?v=1&pid=<pid>&name=<mac name>&k=<psk>&h=<host>,<host>,...&p=<port>
+swapboard://pair?v=1&pid=<pid>&name=<mac name>&k=<psk>&h=<host>,<host>,...&p=<port>
 ```
 
 | Param  | Meaning |
@@ -55,8 +55,8 @@ All byte strings in the JSON are base64url without padding.
 3. **Both sides derive the session keys:**
    ```
    salt   = nc ‖ ns                                  (32 bytes)
-   k_c2s  = HKDF-SHA256(ikm=psk, salt, info="clipsync v1 c2s", L=32)
-   k_s2c  = HKDF-SHA256(ikm=psk, salt, info="clipsync v1 s2c", L=32)
+   k_c2s  = HKDF-SHA256(ikm=psk, salt, info="swapboard v1 c2s", L=32)
+   k_s2c  = HKDF-SHA256(ikm=psk, salt, info="swapboard v1 s2c", L=32)
    ```
 4. The client sends encrypted `{"type":"auth","device":"<phone name>"}`, with c2s counter 0.
    - If decryption fails, the server closes with 4001.
@@ -72,7 +72,7 @@ Every message after step 3 is a WebSocket *binary* frame:
 ```
 frame = ctr (uint64, big-endian, 8 bytes) ‖ AES-256-GCM ciphertext ‖ tag (16 bytes)
 nonce = 00 00 00 00 ‖ ctr (8 bytes, big-endian)        (12 bytes)
-aad   = "clipsync-v1"                                  (ASCII)
+aad   = "swapboard-v1"                                  (ASCII)
 key   = k_c2s for client→server, k_s2c for server→client
 ```
 

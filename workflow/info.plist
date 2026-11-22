@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>bundleid</key>
-	<string>com.clipsync.alfred</string>
+	<string>app.swapboard.alfred</string>
 	<key>category</key>
 	<string>Tools</string>
 	<key>connections</key>
@@ -111,13 +111,13 @@
 		</array>
 	</dict>
 	<key>createdby</key>
-	<string>ClipSync</string>
+	<string>Swapboard</string>
 	<key>description</key>
 	<string>Sync the clipboard between your Mac and your Android phone</string>
 	<key>disabled</key>
 	<false/>
 	<key>name</key>
-	<string>ClipSync</string>
+	<string>Swapboard</string>
 	<key>objects</key>
 	<array>
 		<dict>
@@ -146,7 +146,7 @@
 				<key>queuemode</key>
 				<integer>1</integer>
 				<key>runningsubtext</key>
-				<string>Checking ClipSync…</string>
+				<string>Checking Swapboard…</string>
 				<key>script</key>
 				<string></string>
 				<key>scriptargtype</key>
@@ -156,7 +156,7 @@
 				<key>subtext</key>
 				<string>Sync the clipboard with your phone</string>
 				<key>title</key>
-				<string>ClipSync</string>
+				<string>Swapboard</string>
 				<key>type</key>
 				<integer>8</integer>
 				<key>withspace</key>
@@ -204,7 +204,7 @@
 				<key>text</key>
 				<string>{query}</string>
 				<key>title</key>
-				<string>ClipSync</string>
+				<string>Swapboard</string>
 			</dict>
 			<key>type</key>
 			<string>alfred.workflow.output.notification</string>
@@ -320,9 +320,9 @@
 		</dict>
 	</array>
 	<key>readme</key>
-	<string># ClipSync
+	<string># Swapboard
 
-Syncs the clipboard between this Mac and the ClipSync Android app.
+Syncs the clipboard between this Mac and the Swapboard Android app.
 
 - **clip**: status and actions (pair a phone, send the clipboard, pause or resume auto-sync, start or stop the agent)
 - **Hotkey** (set one yourself): send the Mac clipboard to the phone
@@ -411,7 +411,7 @@ Items that password managers mark as concealed are never auto-synced.</string>
 				<true/>
 			</dict>
 			<key>description</key>
-			<string>Keyword that opens the ClipSync menu.</string>
+			<string>Keyword that opens the Swapboard menu.</string>
 			<key>label</key>
 			<string>Keyword</string>
 			<key>type</key>

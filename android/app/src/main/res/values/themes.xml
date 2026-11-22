@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.ClipSync" parent="android:Theme.DeviceDefault.DayNight">
+    <style name="Theme.Swapboard" parent="android:Theme.DeviceDefault.DayNight">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
 
     <!-- Invisible window for the send activities. -->
-    <style name="Theme.ClipSync.Transparent" parent="android:Theme.Translucent.NoTitleBar">
+    <style name="Theme.Swapboard.Transparent" parent="android:Theme.Translucent.NoTitleBar">
         <item name="android:windowAnimationStyle">@null</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:backgroundDimEnabled">false</item>

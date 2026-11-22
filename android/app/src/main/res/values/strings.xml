@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ClipSync</string>
+    <string name="app_name">Swapboard</string>
     <string name="send_to_mac">Send to Mac</string>
     <string name="send_to_mac_sensitive">Send to Mac (sensitive)</string>
     <string name="tile_label">Send to Mac</string>
@@ -11,7 +11,7 @@
     <string name="shortcut_send_long">Send clipboard to Mac</string>
 
     <string name="channel_status">Connection status</string>
-    <string name="channel_status_description">Shows whether ClipSync is connected to your Mac</string>
+    <string name="channel_status_description">Shows whether Swapboard is connected to your Mac</string>
     <string name="action_send">Send clipboard</string>
     <string name="action_send_sensitive">Send as sensitive</string>
 
@@ -20,9 +20,9 @@
     <string name="state_connecting">Connecting via %1$s…</string>
     <string name="state_connected">Connected to %1$s (%2$s)</string>
     <string name="state_waiting">Mac not reachable — retrying</string>
-    <string name="state_repair">Re-pair needed — open ClipSync</string>
+    <string name="state_repair">Re-pair needed — open Swapboard</string>
 
-    <string name="toast_not_paired">ClipSync isn\'t paired with a Mac yet</string>
+    <string name="toast_not_paired">Swapboard isn\'t paired with a Mac yet</string>
     <string name="toast_too_large">Too large to send (max 1 MB)</string>
     <string name="toast_already_on_mac">Already on your Mac</string>
     <string name="toast_sent">Sent to Mac</string>

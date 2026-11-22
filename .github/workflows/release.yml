@@ -3,7 +3,7 @@
 #   - Running this workflow by hand makes a draft pre-release, to try a build without publishing.
 #
 # Secrets:
-#   CLIPSYNC_KEYSTORE_BASE64, CLIPSYNC_KEYSTORE_PASSWORD, CLIPSYNC_KEY_ALIAS   Android signing key (required)
+#   SWAPBOARD_KEYSTORE_BASE64, SWAPBOARD_KEYSTORE_PASSWORD, SWAPBOARD_KEY_ALIAS   Android signing key (required)
 #   MACOS_CERTIFICATE_P12, MACOS_CERTIFICATE_PASSWORD, MACOS_SIGN_ID,
 #   APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD   Optional: Developer ID signing and notarization.
 #                                                  Without them the Mac app is signed ad hoc.
@@ -49,7 +49,7 @@ jobs:
           extra=""
           if [ "$GITHUB_EVENT_NAME" != "push" ]; then extra="--prerelease"; fi
           gh release create "${{ steps.tag.outputs.tag }}" --draft $extra --target "$GITHUB_SHA" \
-            --title "ClipSync ${{ steps.tag.outputs.tag }}" --notes-file "$RUNNER_TEMP/notes.md"
+            --title "Swapboard ${{ steps.tag.outputs.tag }}" --notes-file "$RUNNER_TEMP/notes.md"
 
   mac:
     needs: prepare
@@ -91,14 +91,14 @@ jobs:
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
           notarize() { xcrun notarytool submit "$1" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait; }
-          notarize dist/ClipSync-mac.zip
-          xcrun stapler staple dist/ClipSync.app
-          rm dist/ClipSync-mac.zip
-          ditto -c -k --keepParent dist/ClipSync.app dist/ClipSync-mac.zip
-          cp dist/ClipSync.alfredworkflow "$RUNNER_TEMP/workflow.zip"
+          notarize dist/Swapboard-mac.zip
+          xcrun stapler staple dist/Swapboard.app
+          rm dist/Swapboard-mac.zip
+          ditto -c -k --keepParent dist/Swapboard.app dist/Swapboard-mac.zip
+          cp dist/Swapboard.alfredworkflow "$RUNNER_TEMP/workflow.zip"
           notarize "$RUNNER_TEMP/workflow.zip"
       - name: Attach to the release
-        run: gh release upload "${{ needs.prepare.outputs.tag }}" dist/ClipSync-mac.zip dist/ClipSync.alfredworkflow --clobber
+        run: gh release upload "${{ needs.prepare.outputs.tag }}" dist/Swapboard-mac.zip dist/Swapboard.alfredworkflow --clobber
 
   android:
     needs: prepare
@@ -113,22 +113,22 @@ jobs:
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
       - name: Test and build the signed APK
         env:
-          KEYSTORE_BASE64: ${{ secrets.CLIPSYNC_KEYSTORE_BASE64 }}
-          CLIPSYNC_KEYSTORE_PASSWORD: ${{ secrets.CLIPSYNC_KEYSTORE_PASSWORD }}
-          CLIPSYNC_KEY_ALIAS: ${{ secrets.CLIPSYNC_KEY_ALIAS }}
+          KEYSTORE_BASE64: ${{ secrets.SWAPBOARD_KEYSTORE_BASE64 }}
+          SWAPBOARD_KEYSTORE_PASSWORD: ${{ secrets.SWAPBOARD_KEYSTORE_PASSWORD }}
+          SWAPBOARD_KEY_ALIAS: ${{ secrets.SWAPBOARD_KEY_ALIAS }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::The CLIPSYNC_KEYSTORE_BASE64 secret is missing (see docs/DEVELOPMENT.md)"
+            echo "::error::The SWAPBOARD_KEYSTORE_BASE64 secret is missing (see docs/DEVELOPMENT.md)"
             exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-          export CLIPSYNC_KEYSTORE="$RUNNER_TEMP/release.jks"
+          export SWAPBOARD_KEYSTORE="$RUNNER_TEMP/release.jks"
           cd android
           ./gradlew --no-daemon test lintDebug assembleRelease -PprojectUrl="https://github.com/$GITHUB_REPOSITORY"
           mkdir -p ../dist
-          cp app/build/outputs/apk/release/app-release.apk ../dist/ClipSync.apk
+          cp app/build/outputs/apk/release/app-release.apk ../dist/Swapboard.apk
       - name: Attach to the release
-        run: gh release upload "${{ needs.prepare.outputs.tag }}" dist/ClipSync.apk --clobber
+        run: gh release upload "${{ needs.prepare.outputs.tag }}" dist/Swapboard.apk --clobber
 
   publish:
     needs: [prepare, mac, android]

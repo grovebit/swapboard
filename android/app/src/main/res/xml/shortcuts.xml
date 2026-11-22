@@ -7,8 +7,8 @@
         android:shortcutLongLabel="@string/shortcut_send_long"
         android:shortcutShortLabel="@string/shortcut_send_short">
         <intent
-            android:action="com.clipsync.android.SEND"
-            android:targetClass="com.clipsync.android.ui.SendClipboardActivity"
-            android:targetPackage="com.clipsync.android" />
+            android:action="app.swapboard.android.SEND"
+            android:targetClass="app.swapboard.android.ui.SendClipboardActivity"
+            android:targetPackage="app.swapboard.android" />
     </shortcut>
 </shortcuts>

@@ -2,7 +2,7 @@
 mac/.build/
 mac/.swiftpm/
 dist/
-workflow/clipsync
+workflow/swapboard
 
 # Alfred writes your User Configuration values here when the workflow is linked for development
 workflow/prefs.plist

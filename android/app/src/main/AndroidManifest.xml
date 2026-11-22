@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <!-- No ACCESS_LOCAL_NETWORK on purpose: ClipSync only talks to the Mac over Tailscale, so on
+    <!-- No ACCESS_LOCAL_NETWORK on purpose: Swapboard only talks to the Mac over Tailscale, so on
          Android 17 the OS itself blocks this app from reaching devices on the local network. -->
 
     <!-- Setup checks whether Tailscale is installed; optional automatic phone → Mac sync uses Shizuku. -->
@@ -20,7 +20,7 @@
     </queries>
 
     <application
-        android:name=".ClipSyncApp"
+        android:name=".SwapboardApp"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
@@ -28,7 +28,7 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ClipSync">
+        android:theme="@style/Theme.Swapboard">
 
         <activity
             android:name=".ui.MainActivity"
@@ -50,7 +50,7 @@
             android:exported="false"
             android:noHistory="true"
             android:taskAffinity=""
-            android:theme="@style/Theme.ClipSync.Transparent" />
+            android:theme="@style/Theme.Swapboard.Transparent" />
 
         <!-- Share sheet and text-selection menu. -->
         <activity
@@ -60,7 +60,7 @@
             android:label="@string/send_to_mac"
             android:noHistory="true"
             android:taskAffinity=""
-            android:theme="@style/Theme.ClipSync.Transparent">
+            android:theme="@style/Theme.Swapboard.Transparent">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -97,12 +97,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="pair"
-                    android:scheme="clipsync" />
+                    android:scheme="swapboard" />
             </intent-filter>
         </activity>
 
         <service
-            android:name=".service.ClipSyncService"
+            android:name=".service.SwapboardService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 

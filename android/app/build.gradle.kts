@@ -19,14 +19,14 @@ val projectUrl = (findProperty("projectUrl") as String?).orEmpty()
 // it, release builds are unsigned; debug builds always use the debug key.
 fun signingValue(env: String, property: String): String? =
     System.getenv(env)?.takeIf { it.isNotEmpty() } ?: (findProperty(property) as String?)
-val releaseKeystore = signingValue("CLIPSYNC_KEYSTORE", "clipsyncKeystore")
+val releaseKeystore = signingValue("SWAPBOARD_KEYSTORE", "swapboardKeystore")
 
 android {
-    namespace = "com.clipsync.android"
+    namespace = "app.swapboard.android"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.clipsync.android"
+        applicationId = "app.swapboard.android"
         minSdk = 29
         targetSdk = 37
         versionCode = appVersionCode
@@ -38,9 +38,9 @@ android {
         if (releaseKeystore != null) {
             create("release") {
                 storeFile = file(releaseKeystore)
-                storePassword = signingValue("CLIPSYNC_KEYSTORE_PASSWORD", "clipsyncKeystorePassword")
-                keyAlias = signingValue("CLIPSYNC_KEY_ALIAS", "clipsyncKeyAlias") ?: "clipsync"
-                keyPassword = signingValue("CLIPSYNC_KEY_PASSWORD", "clipsyncKeyPassword") ?: storePassword
+                storePassword = signingValue("SWAPBOARD_KEYSTORE_PASSWORD", "swapboardKeystorePassword")
+                keyAlias = signingValue("SWAPBOARD_KEY_ALIAS", "swapboardKeyAlias") ?: "swapboard"
+                keyPassword = signingValue("SWAPBOARD_KEY_PASSWORD", "swapboardKeyPassword") ?: storePassword
             }
         }
     }
@@ -73,7 +73,7 @@ android {
 // Unit tests read the shared protocol test vectors from the repo root.
 tasks.withType<Test>().configureEach {
     systemProperty(
-        "clipsync.vectors",
+        "swapboard.vectors",
         rootProject.layout.projectDirectory.file("../protocol/vectors.json").asFile.absolutePath,
     )
 }

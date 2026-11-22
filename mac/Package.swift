@@ -2,17 +2,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "ClipSync",
+    name: "Swapboard",
     platforms: [.macOS(.v12)],
     products: [
-        .executable(name: "clipsync", targets: ["clipsync"]),
+        .executable(name: "swapboard", targets: ["swapboard"]),
     ],
     targets: [
-        .target(name: "ClipSyncCore"),
-        .executableTarget(name: "clipsync", dependencies: ["ClipSyncCore"]),
+        .target(name: "SwapboardCore"),
+        .executableTarget(name: "swapboard", dependencies: ["SwapboardCore"]),
         .testTarget(
-            name: "ClipSyncCoreTests",
-            dependencies: ["ClipSyncCore"]
+            name: "SwapboardCoreTests",
+            dependencies: ["SwapboardCore"]
         ),
     ],
     swiftLanguageModes: [.v5]

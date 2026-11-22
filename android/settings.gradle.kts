@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "ClipSync"
+rootProject.name = "Swapboard"
 include(":app")
