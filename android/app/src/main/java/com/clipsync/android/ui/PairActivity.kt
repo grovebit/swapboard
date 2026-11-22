@@ -89,7 +89,13 @@ class PairActivity : ComponentActivity() {
         setIntent(Intent(this, PairActivity::class.java)) // don't keep the key in the intent
     }
 
-    private fun parse(text: String): PairState = try {
+    private fun parse(text: String): PairState = if (text.startsWith("https://")) {
+        // The Mac's setup window first shows a code that downloads the app.
+        PairState.Error(
+            "That's the code for downloading the app. In the ClipSync window on your Mac, click " +
+                "“My phone has the app” to show the code that connects your phone, then scan again.",
+        )
+    } else try {
         PairState.Confirm(PairingUri.parse(text))
     } catch (e: IllegalArgumentException) {
         PairState.Error(e.message ?: "Invalid pairing link")

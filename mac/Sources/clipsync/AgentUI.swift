@@ -72,6 +72,8 @@ final class AgentUI: NSObject, NSMenuDelegate, UNUserNotificationCenterDelegate 
         menu.addItem(.separator())
         if AppBundle.helpURL != nil { menu.addItem(action("ClipSync Help", #selector(openHelp))) }
         menu.addItem(action("Show Log", #selector(showLog)))
+        menu.addItem(action("Uninstall ClipSync…", #selector(uninstall)))
+        menu.addItem(.separator())
         menu.addItem(action("Quit ClipSync", #selector(quit), key: "q"))
     }
 
@@ -142,6 +144,14 @@ final class AgentUI: NSObject, NSMenuDelegate, UNUserNotificationCenterDelegate 
 
     @objc private func showLog() {
         Shell.spawn("/usr/bin/open", ["-a", "Console", Paths.logURL.path])
+    }
+
+    @objc private func uninstall() {
+        let message = "ClipSync stops, forgets your paired phones and moves itself to the Trash. " +
+            "Remove the app from your phone separately. To use ClipSync again, download it again."
+        if ask("Uninstall ClipSync?", message, button: "Uninstall") {
+            agent.uninstall()
+        }
     }
 
     @objc private func quit() {

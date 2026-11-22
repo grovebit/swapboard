@@ -157,11 +157,12 @@ private fun PairStep() {
     val context = LocalContext.current
     StepTitle(2, "Scan the code on your Mac")
     Text(
-        "On your Mac, open the ClipSync app. Its window shows a code.",
+        "In the ClipSync window on your Mac, click “My phone has the app”. The window then shows a code: " +
+            "tap “Scan code” below and point your phone at it.",
         style = MaterialTheme.typography.bodyLarge,
     )
     Text(
-        "Closed the window already? Click the ClipSync icon at the top of your Mac's screen and choose “Set Up a Phone”.",
+        "Closed the window? Click the ClipSync icon at the top of your Mac's screen and choose “Set Up a Phone”.",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

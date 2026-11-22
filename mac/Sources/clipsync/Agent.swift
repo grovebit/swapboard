@@ -75,6 +75,20 @@ final class Agent {
         exit(0)
     }
 
+    /// Removes the login item, the data folder (pairing keys, log) and ClipSync.app, then exits.
+    /// The launchd job stays loaded until logout, but stopped: exit code 0 isn't restarted, and
+    /// without its plist it isn't loaded at the next login.
+    func uninstall() -> Never {
+        Log.info("uninstalling")
+        let fm = FileManager.default
+        try? fm.removeItem(at: Paths.launchAgentPlist)
+        control.stop()
+        server.stop()
+        try? fm.removeItem(at: Paths.dataDir)
+        if let app = AppBundle.current { try? fm.trashItem(at: app, resultingItemURL: nil) }
+        exit(0)
+    }
+
     /// Exit code 0 tells launchd not to restart the agent (KeepAlive: SuccessfulExit = false).
     func shutdown() -> Never {
         Log.info("agent stopping")

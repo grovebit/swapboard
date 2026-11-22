@@ -90,9 +90,15 @@ enum Launcher {
     private static func moveToApplications(_ bundle: URL) -> Never {
         NSApp.activate(ignoringOtherApps: true)
         let ask = NSAlert()
-        ask.messageText = "Move ClipSync to your Applications folder?"
-        ask.informativeText = "ClipSync needs to be in Applications so it can keep running in the background and start when you log in."
-        ask.addButton(withTitle: "Move to Applications")
+        if AppBundle.standardLocations.contains(where: { FileManager.default.fileExists(atPath: $0.path) }) {
+            ask.messageText = "Update ClipSync?"
+            ask.informativeText = "This replaces the ClipSync in your Applications folder with this version. Your settings and paired phones stay."
+            ask.addButton(withTitle: "Update")
+        } else {
+            ask.messageText = "Move ClipSync to your Applications folder?"
+            ask.informativeText = "ClipSync needs to be in Applications so it can keep running in the background and start when you log in."
+            ask.addButton(withTitle: "Move to Applications")
+        }
         ask.addButton(withTitle: "Quit")
         guard ask.runModal() == .alertFirstButtonReturn else { exit(0) }
 
