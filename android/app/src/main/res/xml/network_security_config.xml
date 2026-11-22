@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ws:// to the Mac is cleartext at the transport level; payloads are AES-256-GCM encrypted
+     with the pairing key (protocol/PROTOCOL.md). A domain-config can't express IP ranges. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

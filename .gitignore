@@ -1,0 +1,20 @@
+# Build outputs
+mac/.build/
+mac/.swiftpm/
+dist/
+workflow/clipsync
+
+# Alfred writes your User Configuration values here when the workflow is linked for development
+workflow/prefs.plist
+
+# Android / Gradle
+android/.gradle/
+android/**/build/
+android/local.properties
+android/.idea/
+android/.kotlin/
+*.apk
+*.aab
+
+# macOS
+.DS_Store
