@@ -7,7 +7,7 @@ import androidx.core.content.edit
 class SetupPrefs(context: Context) {
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    /** Phones paired before the setup screens existed skip them. Only decides once. */
+    /** A phone paired before the app first opens (through a pairing link) skips setup. Only decides once. */
     fun decideOnce(alreadyPaired: Boolean) {
         if (!prefs.contains(KEY_DONE)) done = alreadyPaired
     }

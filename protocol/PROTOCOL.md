@@ -24,7 +24,7 @@ swapboard://pair?v=1&pid=<pid>&name=<mac name>&k=<psk>&h=<host>,<host>,...&p=<po
 | `pid`  | Pairing id. The server looks up the PSK by it. |
 | `name` | Mac display name, percent-encoded (UTF-8; space = `%20`; `+` must be encoded as `%2B`). |
 | `k`    | PSK, base64url without padding. Must decode to exactly 32 bytes. |
-| `h`    | The Mac's Tailscale IPv4 addresses (100.64.0.0/10), comma-separated, in the order to try. At least one is required. Clients **must ignore** any other host (older links also listed LAN IPs and `.local` names). |
+| `h`    | The Mac's Tailscale IPv4 addresses (100.64.0.0/10), comma-separated, in the order to try. At least one is required. Clients **must ignore** any other host. |
 | `p`    | TCP port, 1–65535 (default 48613). |
 
 Unknown parameters are ignored.

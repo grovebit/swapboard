@@ -62,7 +62,7 @@ Received sensitive clips are written with `org.nspasteboard.ConcealedType`.
 ### Android
 
 - minSdk 29 (Android 10), target and compile SDK 37. Newer APIs are behind version checks, and lint must report no `NewApi` errors.
-- **First-run setup.** `SetupScreen.kt` shows the step that `currentSetupStep()` (`SetupFlow.kt`, unit-tested) picks from what's already done. Phones that were paired before this screen existed skip it (`SetupPrefs.decideOnce`).
+- **First-run setup.** `SetupScreen.kt` shows the step that `currentSetupStep()` (`SetupFlow.kt`, unit-tested) picks from what's already done. A phone that was paired before the app first opened (through a pairing link) skips it (`SetupPrefs.decideOnce`).
 - **Tailscale detection.** `TailscaleApp` looks for a VPN network carrying a 100.64.0.0/10 address, or routing 100.100.100.100. That needs the `<queries>` entry for `com.tailscale.ipn`.
 - **Key storage.** The pairing key is wrapped with an Android Keystore AES-GCM key. App backups are disabled.
 - **Automatic phone → Mac.** Android 10+ only lets the foreground app read the clipboard, but the shell user (uid 2000) holds `READ_CLIPBOARD_IN_BACKGROUND`. `shizuku/ClipWatcherService` runs as a Shizuku *user service* under that uid:
