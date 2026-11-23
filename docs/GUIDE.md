@@ -397,15 +397,15 @@ Your phone is putting Swapboard or Tailscale to sleep. Go through [Keep Swapboar
 
 **The phone says "Mac not reachable — retrying", but Tailscale is on, on both devices.**
 Swapboard only needs Tailscale's standard settings. Check whether one of these was changed:
-- **In Tailscale on your Mac:** **Allow incoming connections** must be on. It is, unless you turned it off.
-- **Tailscale's access rules:** if you've edited them (**Access controls** in the Tailscale admin console), allow your phone to reach your Mac on TCP port 48613, or the port you chose. If you've never edited them, they're fine.
+- **In Tailscale on your Mac:** click the Tailscale icon in the menu bar, choose **Settings…**, and check that **Allow incoming connections** is ticked. It is, unless you turned it off.
+- **Tailscale's access rules:** if you've edited them (the [Access controls](https://console.tailscale.com/admin/acls) page of the Tailscale admin console), allow your phone to reach your Mac on TCP port 48613, or the port you chose. If you've never edited them, they're fine.
 - **The macOS firewall:** if you turned it on and macOS asks whether Swapboard may accept incoming network connections, click **Allow**. If you clicked **Deny** earlier, open **System Settings → Network → Firewall → Options** and set Swapboard to **Allow incoming connections**.
 
 **Tailscale keeps turning off on my phone.**
 Android runs only one VPN app at a time. Another VPN, or an ad blocker that works as a VPN, switches Tailscale off when it starts. Turn the other app off: Swapboard needs Tailscale.
 
 **Syncing stopped, and Tailscale asks me to sign in again.**
-Tailscale makes each device sign in again from time to time: every 180 days, unless you change it. Sign in again, and Swapboard carries on by itself. To stop this, open the [Tailscale admin console](https://login.tailscale.com/admin/machines), click **…** next to your Mac and then your phone, and choose **Disable key expiry**.
+Tailscale makes each device sign in again from time to time: every 180 days, unless you change it. Sign in again, and Swapboard carries on by itself. To stop this, open the **Machines** page of the [Tailscale admin console](https://console.tailscale.com/admin/machines). In your Mac's row, open the menu at the far right and choose **Disable Key Expiry**. Do the same for your phone.
 
 **I copied something on my Mac, but it didn't reach my phone.**
 - Is auto-sync paused? If it is, the Swapboard menu shows **Resume Auto-Sync**.
