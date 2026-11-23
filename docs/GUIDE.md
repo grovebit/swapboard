@@ -385,8 +385,8 @@ In short: **only your two devices can read your clips, and they never pass throu
 |---|---|---|
 | **Connected to** *Mac* | Everything works. | Nothing. |
 | **Connecting via 100.…** | Swapboard is reaching out to your Mac. | Wait a few seconds. |
-| **Tailscale is off on this phone** | Swapboard can't reach your Mac without Tailscale. | Tap **Open Tailscale** and turn it on. |
-| **Mac not reachable — retrying** | Your Mac can't be reached right now. | Check these, then tap **Reconnect**:<br>1. Your Mac is on and awake.<br>2. Tailscale is connected on both devices, with the same account.<br>3. Swapboard is running on your Mac (**⇄** in the menu bar). |
+| **Tailscale is off on this phone** | Swapboard can't reach your Mac without Tailscale. | Tap **Open Tailscale** and turn it on. If it keeps turning off, see [Common problems](#common-problems). |
+| **Mac not reachable — retrying** | Your Mac can't be reached right now. | Check these, then tap **Reconnect**:<br>1. Your Mac is on and awake.<br>2. Tailscale is connected on both devices, with the same account.<br>3. Swapboard is running on your Mac (**⇄** in the menu bar).<br>4. Still not reachable? See [Common problems](#common-problems). |
 | **Re-pair needed — open Swapboard** | Your Mac no longer knows this phone. For example, it was unpaired. | Tap **Re-pair** and scan a new code. |
 | **Not paired with a Mac** | You haven't paired yet. | Follow the [setup](#setup). |
 
@@ -394,6 +394,18 @@ In short: **only your two devices can read your clips, and they never pass throu
 
 **Clips from my Mac stop arriving after a while, or only arrive when I open the app.**
 Your phone is putting Swapboard or Tailscale to sleep. Go through [Keep Swapboard running on your phone](#keep-swapboard-running-on-your-phone) for **both** apps.
+
+**The phone says "Mac not reachable — retrying", but Tailscale is on, on both devices.**
+Swapboard only needs Tailscale's standard settings. Check whether one of these was changed:
+- **In Tailscale on your Mac:** **Allow incoming connections** must be on. It is, unless you turned it off.
+- **Tailscale's access rules:** if you've edited them (**Access controls** in the Tailscale admin console), allow your phone to reach your Mac on TCP port 48613, or the port you chose. If you've never edited them, they're fine.
+- **The macOS firewall:** if you turned it on and macOS asks whether Swapboard may accept incoming network connections, click **Allow**. If you clicked **Deny** earlier, open **System Settings → Network → Firewall → Options** and set Swapboard to **Allow incoming connections**.
+
+**Tailscale keeps turning off on my phone.**
+Android runs only one VPN app at a time. Another VPN, or an ad blocker that works as a VPN, switches Tailscale off when it starts. Turn the other app off: Swapboard needs Tailscale.
+
+**Syncing stopped, and Tailscale asks me to sign in again.**
+Tailscale makes each device sign in again from time to time: every 180 days, unless you change it. Sign in again, and Swapboard carries on by itself. To stop this, open the [Tailscale admin console](https://login.tailscale.com/admin/machines), click **…** next to your Mac and then your phone, and choose **Disable key expiry**.
 
 **I copied something on my Mac, but it didn't reach my phone.**
 - Is auto-sync paused? If it is, the Swapboard menu shows **Resume Auto-Sync**.
