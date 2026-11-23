@@ -11,7 +11,7 @@
 
 - A Mac with macOS 12 or newer
 - An Android phone with Android 10 or newer
-- **Tailscale**, a free app that privately connects your devices. Swapboard helps you set it up.
+- **Tailscale** on both devices, signed in with the same account. It's a free app that privately connects your devices, and Swapboard helps you set it up. Swapboard only works while Tailscale is on.
 
 ## Setup (about 10 minutes)
 
@@ -19,13 +19,14 @@
 
 1. Download **Swapboard-mac.zip** from the [latest release](../../releases/latest).
 2. Open **Swapboard**. If it asks, click **Move to Applications**.
-3. Follow the window. It helps you set up Tailscale, then shows a code.
+3. Follow the window. It helps you install Tailscale and sign in, then shows a code.
 
 ### On your phone
 
 1. Open your phone's **Camera**, point it at the code on your Mac, and tap the link. The app downloads.
 2. Tap the download to install it, then open **Swapboard**.
-3. Follow the steps. When the phone asks you to scan, click **My phone has the app** on your Mac and scan the new code.
+3. Follow the steps. Install Tailscale when asked, and sign in with the **same account** as on your Mac.
+4. When the phone asks you to scan, click **My phone has the app** on your Mac and scan the new code.
 
 **Done!** Copy something on your Mac, then paste it on your phone.
 
