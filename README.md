@@ -34,7 +34,7 @@
 
 Swapboard isn't in the App Store or on Google Play, so your devices ask you to confirm once:
 
-- **Mac: "Swapboard" can't be opened.** Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. Then open Swapboard again.
+- **Mac: "Swapboard" can't be opened.** Open **System Settings → Privacy & Security** (macOS 13 or newer), scroll down and click **Open Anyway**. Then open Swapboard again. On macOS 12, see the [full guide](docs/GUIDE.md#if-your-mac-shows-a-warning).
 - **Phone: the browser warns about the download.** Choose to download it anyway.
 - **Phone: you can't install unknown apps.** Tap **Settings**, turn on **Allow from this source**, then go back and tap **Install**.
 - **Phone: Play Protect warns you.** Tap **More details → Install anyway**.

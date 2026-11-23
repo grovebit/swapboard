@@ -99,7 +99,7 @@ That's it! The Mac's window shows **Connected to** *your phone's name*. Try it: 
 Swapboard isn't signed with a paid Apple developer certificate yet, so the first time you open it, macOS may block it. The message says something like **"Swapboard" Not Opened** or **"Swapboard" can't be opened because Apple cannot check it for malicious software**. To allow it:
 
 1. Close the message with **Done** or **Cancel**. (Don't move it to the Trash.)
-2. Open **System Settings → Privacy & Security** and scroll down to **Security**.
+2. Open **System Settings → Privacy & Security** (macOS 13 or newer) and scroll down to **Security**.
    - Next to the note about "Swapboard", click **Open Anyway**.
    - Confirm with your password or Touch ID.
    - On macOS 12, this is in **System Preferences → Security & Privacy → General**.
@@ -399,7 +399,7 @@ Your phone is putting Swapboard or Tailscale to sleep. Go through [Keep Swapboar
 Swapboard only needs Tailscale's standard settings. Check whether one of these was changed:
 - **In Tailscale on your Mac:** click the Tailscale icon in the menu bar, choose **Settings…**, and check that **Allow incoming connections** is ticked. It is, unless you turned it off.
 - **Tailscale's access rules:** if you've edited them (the [Access controls](https://console.tailscale.com/admin/acls) page of the Tailscale admin console), allow your phone to reach your Mac on TCP port 48613, or the port you chose. If you've never edited them, they're fine.
-- **The macOS firewall:** if you turned it on and macOS asks whether Swapboard may accept incoming network connections, click **Allow**. If you clicked **Deny** earlier, open **System Settings → Network → Firewall → Options** and set Swapboard to **Allow incoming connections**.
+- **The macOS firewall:** if you turned it on and macOS asks whether Swapboard may accept incoming network connections, click **Allow**. If you clicked **Deny** earlier, open **System Settings → Network → Firewall → Options** (macOS 13 or newer) and set Swapboard to **Allow incoming connections**.
 
 **Tailscale keeps turning off on my phone.**
 Android runs only one VPN app at a time. Another VPN, or an ad blocker that works as a VPN, switches Tailscale off when it starts. Turn the other app off: Swapboard needs Tailscale.
@@ -431,7 +431,7 @@ Tailscale was off on your Mac. Connect it, then choose **Set Up a Phone…** in 
 
 **There are no notifications on my Mac.**
 - Check that **Notify When Text Arrives** is ticked in the Swapboard menu.
-- Check that Swapboard may show notifications, in **System Settings → Notifications → Swapboard**.
+- Check that Swapboard may show notifications, in **System Settings → Notifications → Swapboard** (macOS 13 or newer).
 
 **The "Send to Mac" tile is missing.**
 Open Swapboard: the **Finish setting up** card has an **Add** button. On Android 10 to 12, swipe down twice, tap the pencil (edit) icon and drag **Send to Mac** in.
