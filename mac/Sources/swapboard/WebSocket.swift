@@ -46,12 +46,14 @@ final class WSConnection {
     }
 
     func start() {
-        connection.stateUpdateHandler = { [weak self] state in
-            guard let self else { return }
+        connection.stateUpdateHandler = { [weak self, weak connection] state in
             switch state {
-            case .ready: self.onEvent?(.ready)
-            case let .failed(error): self.finish(code: nil, reason: "\(error)")
-            case .cancelled: self.finish(code: nil, reason: "cancelled")
+            case .ready: self?.onEvent?(.ready)
+            case let .failed(error):
+                // A failed NWConnection keeps its socket open until it's cancelled.
+                connection?.cancel()
+                self?.finish(code: nil, reason: "\(error)")
+            case .cancelled: self?.finish(code: nil, reason: "cancelled")
             default: break
             }
         }
@@ -104,10 +106,13 @@ final class WSConnection {
         let metadata = NWProtocolWebSocket.Metadata(opcode: .close)
         metadata.closeCode = code == .normal ? .protocolCode(.normalClosure) : .privateCode(code.rawValue)
         let context = NWConnection.ContentContext(identifier: "close", metadata: [metadata])
+        // Holds the connection itself, not self: `finish` below lets the server drop this wrapper
+        // before the close frame is flushed, and a connection that's never cancelled keeps its socket.
+        let connection = self.connection
         connection.send(content: nil, contentContext: context, isComplete: true,
-                        completion: .contentProcessed { [weak self] _ in
+                        completion: .contentProcessed { _ in
                             // Give the close frame a moment to flush before tearing down.
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self?.connection.cancel() }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { connection.cancel() }
                         })
         finish(code: code.rawValue, reason: "closed locally")
     }
