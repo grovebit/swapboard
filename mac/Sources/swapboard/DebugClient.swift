@@ -5,6 +5,7 @@ import Network
 /// `swapboard debug-client`: pretends to be the phone so the Mac side can be tested without it.
 ///   --host H (default: this Mac's Tailscale address)  --port P  --pid PID (default: newest pairing)
 ///   --send TEXT (send one clip after the handshake)  --sensitive  --wrong-key  --exit-after SECONDS
+///   --quiet (send `quiet` after the handshake, like a phone whose screen is off)
 enum DebugClient {
     static func run(_ args: [String]) -> Never {
         func option(_ name: String) -> String? {
@@ -23,6 +24,7 @@ enum DebugClient {
         let port = option("--port") ?? String(config.settings.port)
         let toSend = option("--send")
         let sensitive = args.contains("--sensitive")
+        let quiet = args.contains("--quiet")
         if let seconds = option("--exit-after").flatMap(Double.init) {
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { print("done"); exit(0) }
         }
@@ -41,6 +43,10 @@ enum DebugClient {
                     ws.close(code)
                 case let .established(name):
                     print("established with \(name)")
+                    if quiet, let frame = try? session.seal(.quiet) {
+                        ws.sendBinary(frame)
+                        print("sent quiet")
+                    }
                     if let toSend, let frame = try? session.seal(.clip(Clip(text: toSend, sensitive: sensitive))) {
                         ws.sendBinary(frame)
                         print("sent clip (\(toSend.utf8.count) bytes)")

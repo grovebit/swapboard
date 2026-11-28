@@ -23,6 +23,8 @@ public enum Message: Equatable {
     case ack(id: String)
     case ping
     case pong
+    /// Client → server: the client stops sending `ping` until its next `ping` (PROTOCOL.md §6).
+    case quiet
     case unknown(type: String)
 
     private struct Envelope: Codable {
@@ -45,6 +47,7 @@ public enum Message: Equatable {
         case let .ack(id): env = Envelope(type: "ack", id: id)
         case .ping: env = Envelope(type: "ping")
         case .pong: env = Envelope(type: "pong")
+        case .quiet: env = Envelope(type: "quiet")
         case let .unknown(type): env = Envelope(type: type)
         }
         let encoder = JSONEncoder()
@@ -74,6 +77,7 @@ public enum Message: Equatable {
         case "ack": return .ack(id: try require(env.id, "id"))
         case "ping": return .ping
         case "pong": return .pong
+        case "quiet": return .quiet
         default: return .unknown(type: env.type)
         }
     }

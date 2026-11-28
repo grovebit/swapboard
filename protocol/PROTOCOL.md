@@ -94,6 +94,7 @@ key   = k_c2s for client→server, k_s2c for server→client
 | `ack`     | both | `id` | Sent after a `clip` has been processed. This includes clips dropped as duplicates. |
 | `ping`    | both | — | The receiver answers with `pong`. |
 | `pong`    | both | — | |
+| `quiet`   | c→s | — | The client stops sending `ping` until its next `ping`. See "Quiet mode" in §6. |
 
 - Unknown fields and unknown `type`s are ignored.
 - `sensitive: true` means the clip must be marked as sensitive locally:
@@ -106,8 +107,14 @@ key   = k_c2s for client→server, k_s2c for server→client
 - **Duplicates.** Receivers remember the last 50 clip `id`s and ignore repeats, but still ack them.
 - **No echo.** A side never forwards a clip it received from the other side back to it.
 - **Liveness.**
-  - The client sends `ping` every 30 s and treats 75 s without any incoming frame as a dead connection.
-  - The server closes connections that send nothing for 180 s. The timeout is long because Android Doze pauses the client's timers.
+  - The client sends `ping` every 30 s and treats 75 s without any incoming frame as a dead connection. Quiet mode turns both off.
+  - The server closes connections that send nothing for 180 s. The timeout is long because Android Doze pauses the client's timers. Connections in quiet mode get 12 h instead.
+- **Quiet mode.** While the phone's screen is off, the client keeps the connection open but sends nothing by itself, so the phone's radio can sleep. Clips still arrive at once in both directions.
+  - The client sends `quiet` when it enters quiet mode, and right after the handshake if it's already in quiet mode. It then stops sending `ping` and stops the 75 s check.
+  - The server then closes the connection only after 12 h without any frame. The client's next `ping` ends quiet mode on the server; other messages don't.
+  - In quiet mode, the client reconnects a dropped connection only once per quiet period, or to deliver a pending clip.
+  - When it leaves quiet mode, the client sends `ping` at once and treats 10 s without any incoming frame as a dead connection.
+  - A server that doesn't know `quiet` ignores it and closes the silent connection after 180 s. The client then reconnects once, and again when it leaves quiet mode.
 - **One connection per pairing.** When a new connection completes authentication for a `pid`, the server closes the older one with **4004**. A client that receives 4004 doesn't reconnect immediately (it backs off).
 
 ## 7. Close codes

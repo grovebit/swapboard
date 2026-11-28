@@ -83,6 +83,7 @@ final class ProtocolVectorTests: XCTestCase {
         XCTAssertTrue(secret.sensitive)
         XCTAssertEqual(decoded[5], .ping)
         XCTAssertEqual(decoded[6], .pong)
+        XCTAssertEqual(decoded[7], .quiet)
         for message in decoded {
             XCTAssertEqual(try Message.decode(try message.encoded()), message)
         }
@@ -146,6 +147,29 @@ final class SessionTests: XCTestCase {
         // replaying an old frame closes the session
         XCTAssertEqual(server.receiveBinary(frame), [.close(.authFailed)])
         XCTAssertEqual(server.state, .closed)
+    }
+
+    func testQuietModeLastsUntilTheNextPing() throws {
+        let server = ServerSession(macName: "Mac") { [psk] _ in psk }
+        let client = ClientSession(pid: "p1", psk: psk, deviceName: "Phone")
+        _ = pump(client.start(), to: server, client: client, fromClient: true)
+        XCTAssertFalse(server.isQuiet)
+        XCTAssertEqual(server.idleTimeout, ProtocolConstants.serverIdleTimeout)
+
+        XCTAssertEqual(server.receiveBinary(try client.seal(.quiet)), [], "quiet needs no answer")
+        XCTAssertTrue(server.isQuiet)
+        XCTAssertEqual(server.idleTimeout, ProtocolConstants.quietIdleTimeout)
+
+        // Clips and acks pass through without ending quiet mode.
+        let clip = Clip(text: "hi", sensitive: false)
+        XCTAssertEqual(server.receiveBinary(try client.seal(.clip(clip))), [.message(.clip(clip))])
+        XCTAssertEqual(server.receiveBinary(try client.seal(.ack(id: "x"))), [.message(.ack(id: "x"))])
+        XCTAssertTrue(server.isQuiet)
+
+        // The next ping ends it, and is still answered.
+        guard case .sendBinary? = server.receiveBinary(try client.seal(.ping)).first else { return XCTFail("no pong") }
+        XCTAssertFalse(server.isQuiet)
+        XCTAssertEqual(server.idleTimeout, ProtocolConstants.serverIdleTimeout)
     }
 
     func testWrongKeyIsRejected() {

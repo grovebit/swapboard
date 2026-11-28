@@ -14,6 +14,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.IBinder
+import android.os.PowerManager
 import android.service.quicksettings.TileService
 import android.util.Log
 import app.swapboard.android.R
@@ -29,6 +30,7 @@ import kotlinx.coroutines.launch
 /**
  * Foreground service (type connectedDevice) that keeps the connection to the Mac alive so
  * Mac → phone clips arrive in the background. Its notification carries the one-tap send actions.
+ * While the screen is off the connection is quiet: it stays open but sends nothing by itself.
  */
 class SwapboardService : Service() {
     private lateinit var controller: SyncController
@@ -36,9 +38,17 @@ class SwapboardService : Service() {
     private var networkMonitor: NetworkMonitor? = null
     private var receiverRegistered = false
 
-    private val wakeReceiver = object : BroadcastReceiver() {
+    private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            controller.connection.kick()
+            val connection = controller.connection
+            when (intent.action) {
+                Intent.ACTION_SCREEN_OFF -> connection.setQuiet(true)
+                Intent.ACTION_SCREEN_ON -> connection.setQuiet(false)
+                Intent.ACTION_USER_PRESENT -> {
+                    connection.setQuiet(false)
+                    connection.kick()
+                }
+            }
         }
     }
 
@@ -50,6 +60,7 @@ class SwapboardService : Service() {
             Notifications.status(this, controller.state.value),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
         )
+        controller.connection.setQuiet(getSystemService(PowerManager::class.java)?.isInteractive == false)
         controller.connection.start()
         controller.autoSync.start()
         val nm = getSystemService(NotificationManager::class.java)
@@ -68,8 +79,9 @@ class SwapboardService : Service() {
         networkMonitor = NetworkMonitor(this) { controller.connection.kick() }.also { it.start() }
         ContextCompat.registerReceiver(
             this,
-            wakeReceiver,
+            screenReceiver,
             IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF)
                 addAction(Intent.ACTION_SCREEN_ON)
                 addAction(Intent.ACTION_USER_PRESENT)
             },
@@ -91,7 +103,7 @@ class SwapboardService : Service() {
     override fun onDestroy() {
         stateJob?.cancel()
         networkMonitor?.stop()
-        if (receiverRegistered) runCatching { unregisterReceiver(wakeReceiver) }
+        if (receiverRegistered) runCatching { unregisterReceiver(screenReceiver) }
         controller.autoSync.stop()
         controller.connection.stop()
         super.onDestroy()

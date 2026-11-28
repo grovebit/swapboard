@@ -44,6 +44,7 @@ class ProtocolSessionTest {
         assertEquals(true, (client.onBinary(frames[4].bytes) as Clip).sensitive)
         assertEquals(frames[5].bytes.toHex(), client.seal(Ping).toHex())
         assertEquals(Pong, client.onBinary(frames[6].bytes))
+        assertEquals(frames[7].bytes.toHex(), client.seal(Quiet).toHex())
     }
 
     @Test

@@ -41,8 +41,13 @@ data object Ping : Message
 @SerialName("pong")
 data object Pong : Message
 
+/** Client → server: the client stops sending `ping` until its next `ping` (PROTOCOL.md §6, quiet mode). */
+@Serializable
+@SerialName("quiet")
+data object Quiet : Message
+
 object Messages {
-    private val knownTypes = setOf("auth", "welcome", "clip", "ack", "ping", "pong")
+    private val knownTypes = setOf("auth", "welcome", "clip", "ack", "ping", "pong", "quiet")
 
     val json = Json {
         classDiscriminator = "type"

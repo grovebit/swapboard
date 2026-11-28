@@ -14,6 +14,8 @@ public enum ProtocolConstants {
     public static let frameOverhead = 8 + 16
     public static let pendingTTL: TimeInterval = 5 * 60
     public static let serverIdleTimeout: TimeInterval = 180
+    /// Idle timeout for a connection whose client is in quiet mode (PROTOCOL.md §6).
+    public static let quietIdleTimeout: TimeInterval = 12 * 60 * 60
     public static let defaultPort: UInt16 = 48613
     public static let pairingTTL: TimeInterval = 10 * 60
 }

@@ -65,6 +65,7 @@ Received sensitive clips are written with `org.nspasteboard.ConcealedType`.
 - **First-run setup.** `SetupScreen.kt` shows the step that `currentSetupStep()` (`SetupFlow.kt`, unit-tested) picks from what's already done. A phone that was paired before the app first opened (through a pairing link) skips it (`SetupPrefs.decideOnce`).
 - **Tailscale detection.** `TailscaleApp` looks for a VPN network carrying a 100.64.0.0/10 address, or routing 100.100.100.100. That needs the `<queries>` entry for `com.tailscale.ipn`.
 - **Key storage.** The pairing key is wrapped with an Android Keystore AES-GCM key. App backups are disabled.
+- **Quiet mode.** While the screen is off, `SwapboardService` puts `ConnectionManager` in quiet mode ([`PROTOCOL.md`](../protocol/PROTOCOL.md) §6). The connection stays open, but sends no pings, so the radio can sleep. Even a 30 s ping kept the mobile radio and Tailscale awake all night.
 - **Automatic phone → Mac.** Android 10+ only lets the foreground app read the clipboard, but the shell user (uid 2000) holds `READ_CLIPBOARD_IN_BACKGROUND`. `shizuku/ClipWatcherService` runs as a Shizuku *user service* under that uid:
   - it registers a clipboard listener on the hidden `IClipboard` service, falling back to polling;
   - it hands new text to the app over AIDL;
@@ -165,6 +166,7 @@ swapboard pair --no-show                  # creates a pairing without showing th
 swapboard debug-client --exit-after 10    # prints the clips the Mac sends
 swapboard debug-client --send "hello"     # sends a clip to the Mac
 swapboard debug-client --wrong-key        # expect: closed code=4001
+swapboard debug-client --quiet --exit-after 240   # quiet mode: stays open past the 180 s idle timeout
 ```
 
 The agent still listens only on the Mac's Tailscale address, so Tailscale must be connected.

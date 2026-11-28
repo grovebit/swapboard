@@ -54,6 +54,7 @@ const frameSpecs = [
   ['s2c', 2, '{"type":"clip","id":"0a1b2c3d-4e5f-4a6b-8c7d-8e9f0a1b2c3d","text":"secret from Mac","sensitive":true,"ts":1763800001000}'],
   ['c2s', 2, '{"type":"ping"}'],
   ['s2c', 3, '{"type":"pong"}'],
+  ['c2s', 3, '{"type":"quiet"}'],
 ];
 const keyFor = (dir) => (dir === 'c2s' ? kC2S : kS2C);
 const frames = frameSpecs.map(([direction, counter, plaintext]) => ({

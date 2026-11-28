@@ -483,7 +483,7 @@ Every device on a Wi-Fi network can try to reach your Mac. Going only through Ta
 Your phone holds on to the clip you just sent for 5 minutes, and delivers it if your Mac comes back in time. Your Mac does the same for your phone. After 5 minutes, the clip is dropped. Only the newest clip waits.
 
 **Will it drain my phone's battery?**
-Swapboard keeps one small, mostly quiet connection to your Mac open, a bit like a chat app does. Tailscale needs some battery too.
+Swapboard keeps one small connection to your Mac open, a bit like a chat app does. While your phone's screen is off, that connection sends nothing by itself, so your phone's mobile radio can sleep. Text you copy on your Mac still arrives right away. Tailscale needs some battery too.
 
 **Can someone else on my Tailscale network read my clips?**
 No. They'd also need the secret key that only your paired devices have.

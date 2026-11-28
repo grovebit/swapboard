@@ -10,6 +10,7 @@ import app.swapboard.android.core.Ping
 import app.swapboard.android.core.Pong
 import app.swapboard.android.core.Protocol
 import app.swapboard.android.core.ProtocolException
+import app.swapboard.android.core.Quiet
 import app.swapboard.android.core.TailnetPolicy
 import app.swapboard.android.core.Welcome
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -54,6 +56,9 @@ sealed interface SendOutcome {
  * Tries the pairing's Tailscale addresses in order (never LAN addresses), backs off 1 s → 60 s with jitter, retries at once on [kick],
  * pings every 30 s and drops the connection after 75 s of silence. Holds only the latest
  * outgoing clip (5-minute TTL) and resends it after reconnecting until it is acked.
+ *
+ * In quiet mode ([setQuiet], while the screen is off) the connection stays open but sends nothing by
+ * itself, so the phone's radio can sleep.
  */
 class ConnectionManager(
     private val scope: CoroutineScope,
@@ -73,13 +78,26 @@ class ConnectionManager(
     private val wake = Channel<Unit>(Channel.CONFLATED)
     private var job: Job? = null
 
+    /** Written only under [lock]; read freely. */
+    private val quiet = MutableStateFlow(false)
+
     private val lock = Any()
     private var live: Live? = null // guarded by lock
     private var pending: PendingClip? = null // guarded by lock
     private val seenIds = ArrayDeque<String>() // guarded by lock
+    private var quietRetryLeft = false // guarded by lock: one reconnect per quiet period
 
-    private class Live(val session: ClientSession, val connection: WsConnection)
+    private class Live(val session: ClientSession, val connection: WsConnection, val liveness: Liveness)
     private class PendingClip(val clip: Clip, val createdAt: Long)
+
+    /** Per-connection times: written by the reader, [setQuiet] and [kick]; read by the watchdog. */
+    private class Liveness(now: Long) {
+        val lastInbound = AtomicLong(now)
+        val lastPing = AtomicLong(now)
+
+        /** When a ping went out that must be answered within [PROBE_TIMEOUT_MS]. */
+        val probeSentAt = AtomicLong(0L)
+    }
 
     private sealed interface SessionResult {
         val description: String
@@ -111,9 +129,36 @@ class ConnectionManager(
         start()
     }
 
-    /** Retry now (network change, screen on). If connected, a ping checks the link is still alive. */
+    /**
+     * Retry now (network change, unlock). If connected, a ping checks the link is still alive.
+     * Does nothing in quiet mode.
+     */
     fun kick() {
-        if (!sendMessage(Ping)) wake.trySend(Unit)
+        val retry = synchronized(lock) {
+            if (quiet.value) return
+            val l = live ?: return@synchronized true
+            probeLocked(l)
+            false
+        }
+        if (retry) wake.trySend(Unit)
+    }
+
+    /**
+     * Quiet mode, for while the screen is off (PROTOCOL.md §6). The connection stays open, so Mac → phone
+     * clips still arrive at once, but it sends no pings and has no silence timeout. The Mac is told with
+     * `quiet`, so it keeps the silent connection open. A dropped connection is retried only once per quiet
+     * period, or to deliver a pending clip. Leaving quiet mode checks the link with a ping right away.
+     */
+    fun setQuiet(on: Boolean) {
+        val retry = synchronized(lock) {
+            if (quiet.value == on) return
+            quiet.value = on
+            quietRetryLeft = on
+            val l = live ?: return@synchronized !on
+            if (on) transmitLocked(l, Quiet) else probeLocked(l)
+            false
+        }
+        if (retry) wake.trySend(Unit)
     }
 
     /** True while [id] is still waiting for an ack. */
@@ -169,10 +214,33 @@ class ConnectionManager(
                 }
                 is SessionResult.ConnectFailed -> Unit
             }
+            if (stayDownWhileQuiet()) {
+                log("screen is off; reconnecting when it comes back on")
+                _state.value = ConnState.Waiting(clock(), result.description)
+                while (stayDownWhileQuiet()) wake.receive()
+                backoffMs = MIN_BACKOFF_MS
+                continue
+            }
             val delayMs = (backoffMs * (0.8 + Random.nextDouble() * 0.4)).toLong()
             _state.value = ConnState.Waiting(clock() + delayMs, result.description)
             val woken = withTimeoutOrNull(delayMs) { wake.receive() } != null
             backoffMs = if (woken) MIN_BACKOFF_MS else minOf(backoffMs * 2, MAX_BACKOFF_MS)
+        }
+    }
+
+    /**
+     * In quiet mode, whether a dropped connection should wait for the screen to come back on rather
+     * than retry: yes, unless a clip is waiting to go out or this quiet period's one retry is unused.
+     */
+    private fun stayDownWhileQuiet(): Boolean = synchronized(lock) {
+        when {
+            !quiet.value -> false
+            pending.let { it != null && clock() - it.createdAt <= Protocol.PENDING_TTL_MS } -> false
+            quietRetryLeft -> {
+                quietRetryLeft = false
+                false
+            }
+            else -> true
         }
     }
 
@@ -181,8 +249,7 @@ class ConnectionManager(
         val session = ClientSession(pairing, deviceName())
         var established = false
         var finished = false
-        val lastInbound = AtomicLong(clock())
-        val lastPing = AtomicLong(clock())
+        val liveness = Liveness(clock())
         var watchdog: Job? = null
         try {
             val first = withTimeoutOrNull(OPEN_TIMEOUT_MS) { connection.events.receiveCatching().getOrNull() }
@@ -196,23 +263,38 @@ class ConnectionManager(
             watchdog = launch {
                 while (isActive) {
                     delay(WATCHDOG_TICK_MS)
-                    val now = clock()
                     if (!session.isEstablished) {
-                        if (now - openedAt > HANDSHAKE_TIMEOUT_MS) {
+                        if (clock() - openedAt > HANDSHAKE_TIMEOUT_MS) {
                             log("handshake timed out")
                             connection.cancel()
                             break
                         }
-                    } else {
-                        if (now - lastInbound.get() > Protocol.DEAD_AFTER_MS) {
-                            log("no traffic for ${Protocol.DEAD_AFTER_MS / 1000}s; dropping connection")
+                        continue
+                    }
+                    // Quiet mode: no pings and no silence timeout until the screen comes back on.
+                    if (quiet.value) {
+                        quiet.first { !it }
+                        continue
+                    }
+                    val now = clock()
+                    val heard = liveness.lastInbound.get()
+                    val probe = liveness.probeSentAt.get()
+                    if (heard < probe) {
+                        if (now - probe >= PROBE_TIMEOUT_MS) {
+                            log("no answer to a ping for ${PROBE_TIMEOUT_MS / 1000}s; dropping connection")
                             connection.cancel()
                             break
                         }
-                        if (now - lastPing.get() >= Protocol.PING_INTERVAL_MS) {
-                            lastPing.set(now)
-                            sendMessage(Ping)
-                        }
+                        continue
+                    }
+                    if (now - heard > Protocol.DEAD_AFTER_MS) {
+                        log("no traffic for ${Protocol.DEAD_AFTER_MS / 1000}s; dropping connection")
+                        connection.cancel()
+                        break
+                    }
+                    if (now - liveness.lastPing.get() >= Protocol.PING_INTERVAL_MS) {
+                        liveness.lastPing.set(now)
+                        sendMessage(Ping)
                     }
                 }
             }
@@ -220,15 +302,15 @@ class ConnectionManager(
                 when (event) {
                     WsEvent.Opened -> Unit
                     is WsEvent.Text -> {
-                        lastInbound.set(clock())
+                        liveness.lastInbound.set(clock())
                         connection.sendBinary(session.onText(event.text))
                     }
                     is WsEvent.Binary -> {
-                        lastInbound.set(clock())
+                        liveness.lastInbound.set(clock())
                         val message = session.onBinary(event.bytes)
                         if (!established && session.isEstablished) {
                             established = true
-                            onEstablished(session, connection, host, pairing)
+                            onEstablished(session, connection, liveness, host, pairing)
                         } else if (message != null) {
                             handle(message)
                         }
@@ -265,11 +347,19 @@ class ConnectionManager(
         }
     }
 
-    private fun onEstablished(session: ClientSession, connection: WsConnection, host: String, pairing: Pairing) {
+    private fun onEstablished(
+        session: ClientSession,
+        connection: WsConnection,
+        liveness: Liveness,
+        host: String,
+        pairing: Pairing,
+    ) {
         var expired: String? = null
         synchronized(lock) {
-            val l = Live(session, connection)
+            val l = Live(session, connection, liveness)
             live = l
+            // A connection made while the screen is off is quiet from the start.
+            if (quiet.value) transmitLocked(l, Quiet)
             val p = pending
             if (p != null) {
                 if (clock() - p.createdAt <= Protocol.PENDING_TTL_MS) {
@@ -315,18 +405,32 @@ class ConnectionManager(
                 if (delivered) _outcomes.tryEmit(SendOutcome.Delivered(message.id))
             }
             Ping -> sendMessage(Pong)
-            Pong, is Welcome, is Auth -> Unit
+            Pong, Quiet, is Welcome, is Auth -> Unit
         }
+    }
+
+    /**
+     * Pings to check the link. The watchdog drops the connection if nothing arrives within
+     * [PROBE_TIMEOUT_MS]; if the ping can't even be sent, the connection is dropped now. Call under [lock].
+     */
+    private fun probeLocked(l: Live) {
+        val now = clock()
+        val liveness = l.liveness
+        val waiting = liveness.probeSentAt.get()
+        if (liveness.lastInbound.get() < waiting && now - waiting < PROBE_TIMEOUT_MS) return // one is on its way
+        liveness.probeSentAt.set(now)
+        liveness.lastPing.set(now)
+        if (!transmitLocked(l, Ping)) l.connection.cancel()
     }
 
     /** Seals and sends under [lock] so frame counters go out in order. */
     private fun sendMessage(message: Message): Boolean = synchronized(lock) {
         val l = live ?: return false
-        runCatching { l.connection.sendBinary(l.session.seal(message)) }.getOrDefault(false)
+        transmitLocked(l, message)
     }
 
-    private fun transmitLocked(l: Live, clip: Clip): Boolean =
-        runCatching { l.connection.sendBinary(l.session.seal(clip)) }.getOrDefault(false)
+    private fun transmitLocked(l: Live, message: Message): Boolean =
+        runCatching { l.connection.sendBinary(l.session.seal(message)) }.getOrDefault(false)
 
     private fun describe(event: WsEvent?): String? = when (event) {
         null -> null
@@ -345,5 +449,8 @@ class ConnectionManager(
         const val OPEN_TIMEOUT_MS = 8_000L
         const val HANDSHAKE_TIMEOUT_MS = 10_000L
         const val WATCHDOG_TICK_MS = 5_000L
+
+        /** How long a ping that checks the link (on leaving quiet mode, or [kick]) may go unanswered. */
+        const val PROBE_TIMEOUT_MS = 10_000L
     }
 }

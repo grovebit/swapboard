@@ -58,6 +58,12 @@
       "counter": 3,
       "plaintext": "{\"type\":\"pong\"}",
       "frame_hex": "0000000000000003764e8d1f67df2a315056d9cddf8c4d6c8917374ebb34e6158171a0898b54e3"
+    },
+    {
+      "direction": "c2s",
+      "counter": 3,
+      "plaintext": "{\"type\":\"quiet\"}",
+      "frame_hex": "0000000000000003b1f3858953c7ab67cce95f0d7ec4fac33010363cd9c082b12a583a6f92bd5a1a"
     }
   ],
   "invalid_frames": [

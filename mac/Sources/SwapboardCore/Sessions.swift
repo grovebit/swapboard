@@ -17,6 +17,13 @@ public final class ServerSession {
     public private(set) var state: State = .awaitingHello
     public private(set) var pid: String?
     public private(set) var peerName: String?
+    /// True from the client's `quiet` until its next `ping` (PROTOCOL.md §6).
+    public private(set) var isQuiet = false
+
+    /// How long the connection may go without an incoming frame before the server closes it.
+    public var idleTimeout: TimeInterval {
+        isQuiet ? ProtocolConstants.quietIdleTimeout : ProtocolConstants.serverIdleTimeout
+    }
 
     private let macName: String
     private let lookupPSK: (String) -> Data?
@@ -73,8 +80,12 @@ public final class ServerSession {
 
         switch message {
         case .ping:
+            isQuiet = false
             guard let pong = try? seal(.pong) else { return fail(.authFailed) }
             return [.sendBinary(pong)]
+        case .quiet:
+            isQuiet = true
+            return []
         case .auth, .welcome:
             return fail(.authFailed)
         case .unknown:

@@ -352,7 +352,7 @@ final class Agent {
 
     private func runMaintenance() {
         let now = Date()
-        for peer in server.peers where now.timeIntervalSince(peer.lastInbound) > ProtocolConstants.serverIdleTimeout {
+        for peer in server.peers where now.timeIntervalSince(peer.lastInbound) > peer.session.idleTimeout {
             Log.info("closing idle connection from \(peer.host)")
             peer.close(.normal)
         }

@@ -108,6 +108,7 @@ class ProtocolVectorsTest {
         assertEquals(true, secret.sensitive)
         assertEquals(Ping, decoded[5])
         assertEquals(Pong, decoded[6])
+        assertEquals(Quiet, decoded[7])
     }
 
     @Test
